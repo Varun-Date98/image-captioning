@@ -1,3 +1,4 @@
+import gc
 import torch
 from PIL import Image
 from torchvision import transforms as T
@@ -62,6 +63,10 @@ def main():
 
                 caption = make_captions_beam_search(model, image_tensor, vocab, device=torch.device("cpu"))
                 st.success(f"📌 Caption: {caption}")
+
+        del image, image_tensor
+
+    gc.collect()
 
 
 if __name__ == "__main__":
