@@ -136,3 +136,52 @@ def calculate_bleu(references, candidates):
         bleu4 += sentence_bleu(ref, cand, weights=bleu4_weights, smoothing_function=smoothing)
 
     return bleu1 / n, bleu4 / n
+
+def make_captions_beam_search(model: nn.Module,
+                              image_tensor: torch.Tensor,
+                              vocabulary,
+                              device: torch.device,
+                              max_length = 50,
+                              beam_width = 3):
+    if isinstance(model, nn.DataParallel):
+        model = model.module
+
+    model.eval()
+    model = model.to(device)
+
+    with torch.no_grad():
+        image_tensor = image_tensor.to(device)
+        features = model.encoder(image_tensor)
+
+    sequences = [([vocabulary.stoi["<SOS>"]], 0.0)]
+    skip_tokens = [vocabulary.stoi["<SOS>"], vocabulary.stoi["<EOS>"], vocabulary.stoi["<PAD>"]]
+
+    with torch.no_grad():
+        for _ in range(max_length):
+            candidates = []
+
+            for seq, score in sequences:
+                if seq[-1] == vocabulary.stoi["<EOS>"]:
+                    candidates.append((seq, score))
+                    continue
+
+                input_tensor = torch.tensor(seq).unsqueeze(0).to(device)
+                output = model.decoder(features, input_tensor)
+                log_probs = F.softmax(output[:, -1, :], dim=1)
+                top_k_log_probs, top_k_idx = torch.topk(log_probs, beam_width)
+
+                for i in range(beam_width):
+                    next_seq = seq + [top_k_idx[0][i].item()]
+                    next_score = score + top_k_log_probs[0][i].item()
+                    candidates.append((next_seq, next_score))
+
+            # Keeping best k sequences
+            sequences = sorted(candidates, key=lambda x: x[1], reverse=True)[:beam_width]
+
+            # Check if all sequences have ended
+            if all(seq[0][-1] == vocabulary.stoi["<EOS>"] for seq in sequences):
+                break
+
+    # Return best sequence
+    best_seq = sequences[0][0]
+    return " ".join([vocabulary.itos[token] for token in best_seq if token not in skip_tokens])

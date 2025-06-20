@@ -1,6 +1,6 @@
 import torch.nn as nn
-from encoder import EncoderCNN
-from decoder import DecoderLSTM
+from .encoder import EncoderCNN
+from .decoder import DecoderLSTM
 
 
 class ImageCaptioningModel(nn.Module):

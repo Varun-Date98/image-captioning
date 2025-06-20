@@ -1,0 +1,7 @@
+torch
+streamlit
+pillow
+torchvision
+huggingface-hub
+tqdm
+nltk

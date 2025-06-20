@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from attention import AdditiveAttention
+from .attention import AdditiveAttention
 
 
 class DecoderLSTM(nn.Module):
